@@ -45,7 +45,7 @@ class TestNvmeFio_nvmf(TestFio, TestCase):
         Run at the start of each test suite.
         fio Prerequisites
         """
-        self.backend = 'nvme_virtual'
+        self.backend = 'nvmf_nvme'
         # change 8192M for daily testing
         # change 40960M for weekend testing
         self.DEFAULT_RUN_SIZE = '512M'

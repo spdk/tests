@@ -60,7 +60,7 @@ class FileSystem_integrity:
         call("rm -rf /home/devicedev*", shell=True)
 
     def getdevicepath(self):
-        if self.backend == "nvme_direct":
+        if self.backend == "nvmf_nvme":
             output = check_output("lsblk -l -o NAME", shell=True)
             devices = re.findall("(nvme[0-9]n1)\n", output)
             self.device_paths = ['/dev/' + dev for dev in devices]
@@ -74,7 +74,7 @@ class FileSystem_integrity:
         print "the file system for the devices is: ", self.filetype
         self.new_dev_paths = []
         for dev_path in self.device_paths:
-            if self.backend == "nvme_direct":
+            if self.backend == "nvmf_nvme":
                 dev_paths = (dev_path) + "p"
             if self.backend == "iscsi_nvme":
                 dev_paths = dev_path

@@ -50,9 +50,9 @@ iscsibackend = [
 nvmfbackend = [
     "nvmf_aiobackend",
     "nvmf_malloc",
-    "nvme_virtual",
+    "nvmf_nvme",
     "nvmf_multiconnection",
-    "nvme_direct"]
+    "nvmf_rxtxqueue"]
 
 
 class TestFio(object):
@@ -142,30 +142,11 @@ class TestFio(object):
                     "/lib/Test_base_fio.py:126: E265 block comment should start with '# ' "
                 print "Please modify aio_device2, The path is", path2
                 self.verify(False, "Not setting target backend!!!")
-        if self.backend == "nvmf_multiconnection":
-            self.dut.send_expect(
-                'sed -i "s/NumberOfLuns 8/NumberOfLuns 128/" %s' %
-                self.dut_nvmf_config_path, "# ", 10)
-            self.dut.send_expect(
-                'sed -i "s/LunSizeInMB 64/LunSizeInMB 1/" %s' %
-                self.dut_nvmf_config_path, "# ", 10)
-            self.dut.send_expect(
-                'sed -i "s/Split Malloc2 2/#Split Malloc2 2/" %s' %
-                self.dut_nvmf_config_path, "# ", 10)
-            self.dut.send_expect(
-                'sed -i "s/Split Malloc3 8 1/#Split Malloc3 8 1/" %s' %
-                self.dut_nvmf_config_path, "# ", 10)
         self.dut.send_expect(
             'sed -i "s/#MaxQueueDepth 128/MaxQueueDepth 1024/" %s' %
             self.dut_nvmf_config_path, "# ", 10)
         self.dut.send_expect(
             'sed -i "s/#MaxIOSize 131072/MaxIOSize 131072/" %s' %
-            self.dut_nvmf_config_path, "# ", 10)
-        self.dut.send_expect(
-            'sed -i "s/TransportId/#TransportId/" %s' %
-            self.dut_nvmf_config_path, "# ", 10)
-        self.dut.send_expect(
-            'sed -i "s/RetryCount 4/#RetryCount 4/" %s' %
             self.dut_nvmf_config_path, "# ", 10)
         self.dut.send_expect(
             "sed -i 's/192.168.2.21/192.168.1.11/' %s" %
@@ -200,7 +181,7 @@ class TestFio(object):
             time.sleep(120)
             self.dut.send_expect("NRHUGE=12288 ./scripts/setup.sh", "#", 200)
             self.dut.send_expect(
-                "./app/iscsi_tgt/iscsi_tgt -c iscsi.conf &", "# ", 200)
+                "./app/iscsi_tgt/iscsi_tgt -c iscsi.conf >> TestSPDK.log 2>&1 &", "# ", 200)
             time.sleep(30)
             self.tester.send_expect(
                 "iscsiadm -m discovery -t st -p 192.168.1.11", "# ", 10)
@@ -226,11 +207,11 @@ class TestFio(object):
             time.sleep(120)
             self.dut.send_expect("NRHUGE=12288 ./scripts/setup.sh", "#", 200)
             self.dut.send_expect(
-                "./app/nvmf_tgt/nvmf_tgt -c nvmf.conf & ", "# ", 200)
+                "./app/nvmf_tgt/nvmf_tgt -c nvmf.conf >> TestSPDK.log 2>&1 & ", "# ", 200)
             time.sleep(30)
             print "Waiting for connecting nvmf target..."
-            self.dut.send_expect("modprobe nvme-rdma", "# ", 5)
-            self.dut.send_expect("modprobe nvme-fabrics", "# ", 5)
+            self.tester.send_expect("modprobe nvme-rdma", "# ", 5)
+            self.tester.send_expect("modprobe nvme-fabrics", "# ", 5)
             self.dut.send_expect(
                 "nvme discover -t rdma -a 192.168.3.11 -s 4420", "# ", 5)
             self.tester.send_expect(
@@ -388,7 +369,7 @@ class TestFio(object):
                     verify,
                     "50")
         if self.backend in nvmfbackend:
-            if self.backend == "nvme_direct" or self.backend == "nvmf_multiconnection":
+            if self.backend == "nvmf_rxtxqueue" or self.backend == "nvmf_multiconnection":
                 self.write_fio_test(
                     test_type,
                     io_size,

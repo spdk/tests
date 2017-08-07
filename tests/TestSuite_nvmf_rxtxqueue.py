@@ -45,7 +45,7 @@ class TestRxtxqueue_nvmf(TestFio, TestCase):
         Run at the start of each test suite.
         fio Prerequisites
         """
-        self.backend = 'nvme_direct'
+        self.backend = 'nvmf_rxtxqueue'
         # change 8192M for daily testing
         # change 10240M for weekend testing
         self.DEFAULT_RUN_SIZE = '512M'

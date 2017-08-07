@@ -103,7 +103,7 @@ class TestFileSystemIntegrity(object):
         """
         Kill target when finish one test case
         """
-        if self.backend == "nvme_direct":
+        if self.backend == "nvmf_nvme":
             self.tester.send_expect("umount /home/devicedev0*", "# ", 10)
             self.tester.send_expect("rm -rf /home/devicedev0*", "# ", 10)
             self.tester.send_expect(
@@ -132,7 +132,7 @@ class TestFileSystemIntegrity(object):
         """
         Run before each test case.
         """
-        if self.backend == "nvme_direct":
+        if self.backend == "nvmf_nvme":
             self.tester.send_expect(
                 "ifconfig %s 192.168.3.2" %
                 self.tester_port_0_inf, "# ", 5)
@@ -142,7 +142,7 @@ class TestFileSystemIntegrity(object):
             self.dut.send_expect(
                 "rm -rf nvmf.conf && cp etc/spdk/nvmf.conf.in nvmf.conf ", "# ", 200)
             self.dut.send_expect(
-                "python etc/spdk/Test_base_utils.py generate_nvmf_tgt_file nvme_direct nvmf.conf",
+                "python etc/spdk/Test_base_utils.py generate_nvmf_tgt_file nvmf_nvme nvmf.conf",
                 "# ",
                 200)
             self.dut.send_expect("NRHUGE=12288 ./scripts/setup.sh", "#", 200)
@@ -152,7 +152,7 @@ class TestFileSystemIntegrity(object):
                 200)
             time.sleep(120)
             self.dut.send_expect(
-                "./app/nvmf_tgt/nvmf_tgt -c nvmf.conf &", "# ", 200)
+                "./app/nvmf_tgt/nvmf_tgt -c nvmf.conf >> TestSPDK.log 2>&1 &", "# ", 200)
             time.sleep(40)
             print "Waiting for nvmf target to connect..."
             time.sleep(2)
@@ -198,7 +198,7 @@ class TestFileSystemIntegrity(object):
                 200)
             self.dut.send_expect("NRHUGE=12288 ./scripts/setup.sh", "#", 200)
             self.dut.send_expect(
-                "./app/iscsi_tgt/iscsi_tgt -c iscsi.conf 2>&1 & ", "# ", 200)
+                "./app/iscsi_tgt/iscsi_tgt -c iscsi.conf >> TestSPDK.log 2>&1 & ", "# ", 200)
             time.sleep(40)
             self.tester.send_expect(
                 "iscsiadm -m discovery -t st -p 192.168.1.11", "# ", 10)

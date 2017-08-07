@@ -95,6 +95,8 @@ def generate_iscsi_file(backend, filename):
         all_luns = int(nvme_ctrl_num)
 
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         filedesc.write("\n[Nvme] \n")
         for i, value in enumerate(bus_numbers):
             filedesc.write(
@@ -120,6 +122,8 @@ def generate_iscsi_file(backend, filename):
 
     if backend == "iscsi_aiobackend":
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         filedesc.write("\n[AIO] \n")
         filedesc.write("  AIO /dev/sdf AIO0\n")
         filedesc.write("  AIO /dev/sde AIO1\n")
@@ -143,6 +147,8 @@ def generate_iscsi_file(backend, filename):
         all_luns = 2
         idx = 0
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         filedesc.write("\n[Malloc] \n")
         filedesc.write("  NumberOfLuns 2\n")
         filedesc.write("  LunSizeInMB 128\n")
@@ -168,6 +174,8 @@ def generate_iscsi_file(backend, filename):
         all_luns = int(nvme_ctrl_num)
 
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         filedesc.write("\n[Nvme] \n")
         for i, value in enumerate(bus_numbers):
             filedesc.write(
@@ -207,29 +215,7 @@ def generate_iscsi_file(backend, filename):
 
 
 def generate_nvmf_tgt_file(backend, filename):
-    if backend == "nvme_direct":
-        check_call("sed -i '/\[Subsystem/,$d' " + filename, shell=True)
-        output = check_output("lspci -nnn", shell=True)
-        bus_numbers = re.findall(
-            "([0-9][0-9]:[0-9][0-9].[0-9]) Non-Volatile memory controller", output)
-        nvme_ctrl_num = len(bus_numbers)
-        all_luns = int(nvme_ctrl_num)
-        idx = 0
-        filedesc = open(filename, 'a')
-        for i, value in enumerate(bus_numbers):
-            target_id = idx + 1
-            filedesc.write("\n[Subsystem" + str(target_id) + "]\n")
-            filedesc.write("  NQN nqn.2016-06.io.spdk:cnode" +
-                           str(target_id) + "\n")
-            filedesc.write("  Core 0\n")
-            filedesc.write("  Mode Direct\n")
-            filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
-            if i == idx:
-                filedesc.write("  Nvme 0000:{} \n".format(value, i))
-            idx = idx + 1
-        filedesc.close()
-
-    if backend == "nvme_virtual":
+    if backend == "nvmf_nvme" or backend == "nvmf_rxtxqueue":
         check_call("sed -i '/\[Nvme/,$d' " + filename, shell=True)
         output = check_output("lspci -nnn", shell=True)
         bus_numbers = re.findall(
@@ -238,11 +224,13 @@ def generate_nvmf_tgt_file(backend, filename):
         all_luns = int(nvme_ctrl_num)
         idx = 0
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         filedesc.write("\n[Nvme] \n")
         for i, value in enumerate(bus_numbers):
             filedesc.write(
                 '\n  TransportId "trtype:PCIe traddr:0000:{}" Nvme{} \n'.format(value, i))
-        filedesc.write("\n  NvmeRetryCount 2 \n")
+        filedesc.write("\n  NvmeRetryCount {} \n".format(all_luns))
         filedesc.write("\n  ResetControllerOnTimeout Yes \n")
         filedesc.write("\n  NvmeTimeoutValue 30 \n")
         filedesc.write("\n  AdminPollRate 100000 \n")
@@ -252,56 +240,17 @@ def generate_nvmf_tgt_file(backend, filename):
             filedesc.write("  NQN nqn.2016-06.io.spdk:cnode" +
                            str(target_id) + "\n")
             filedesc.write("  Core 0\n")
-            filedesc.write("  Mode Virtual\n")
             filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
             filedesc.write("  SN SPDK" + str(target_id) + "\n")
             filedesc.write("  Namespace Nvme" + str(idx) + "n1" + "\n")
             idx = idx + 1
         filedesc.close()
 
-    if backend == "nvmf_malloc":
-        check_call("sed -i '/\[Split/,$d' " + filename, shell=True)
-        all_luns = 8
-        idx = 0
-        filedesc = open(filename, 'a')
-        for i in range(all_luns):
-            target_id = idx + 1
-            filedesc.write("\n[Subsystem" + str(target_id) + "]\n")
-            filedesc.write(
-                "  NQN nqn.2016-06.io.spdk:cnode" +
-                str(target_id) +
-                "\n")
-            filedesc.write("  Core 0\n")
-            filedesc.write("  Mode Virtual\n")
-            filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
-            filedesc.write("  SN SPDK" + str(target_id) + "\n")
-            filedesc.write("  Namespace Malloc" + str(idx) + "\n")
-            idx = idx + 1
-        filedesc.close()
-
-    if backend == "nvmf_multiconnection":
-        check_call("sed -i '/\[Split/,$d' " + filename, shell=True)
-        all_luns = 128
-        idx = 0
-        filedesc = open(filename, 'a')
-        for i in range(all_luns):
-            target_id = idx + 1
-            filedesc.write("\n[Subsystem" + str(target_id) + "]\n")
-            filedesc.write(
-                "  NQN nqn.2016-06.io.spdk:cnode" +
-                str(target_id) +
-                "\n")
-            filedesc.write("  Core 0\n")
-            filedesc.write("  Mode Virtual\n")
-            filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
-            filedesc.write("  SN SPDK" + str(target_id) + "\n")
-            filedesc.write("  Namespace Malloc" + str(idx) + "\n")
-            idx = idx + 1
-        filedesc.close()
-
     if backend == "nvmf_aiobackend":
         check_call("sed -i '/\[Subsystem/,$d' " + filename, shell=True)
         filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
         all_luns = 2
         idx = 0
         for i in range(all_luns):
@@ -310,13 +259,76 @@ def generate_nvmf_tgt_file(backend, filename):
             filedesc.write("  NQN nqn.2016-06.io.spdk:cnode" +
                            str(target_id) + "\n")
             filedesc.write("  Core 0\n")
-            filedesc.write("  Mode Virtual\n")
             filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
             filedesc.write("  SN SPDK" + str(target_id) + "\n")
             filedesc.write("  Namespace AIO" + str(idx) + "\n")
             idx = idx + 1
         filedesc.close()
 
+    if backend == "nvmf_malloc":
+        check_call("sed -i '/\[Split/,$d' " + filename, shell=True)
+        all_luns = 8
+        idx = 0
+        filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
+        for i in range(all_luns):
+            target_id = idx + 1
+            filedesc.write("\n[Subsystem" + str(target_id) + "]\n")
+            filedesc.write(
+                "  NQN nqn.2016-06.io.spdk:cnode" +
+                str(target_id) +
+                "\n")
+            filedesc.write("  Core 0\n")
+            filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
+            filedesc.write("  SN SPDK" + str(target_id) + "\n")
+            filedesc.write("  Namespace Malloc" + str(idx) + "\n")
+            idx = idx + 1
+        filedesc.close()
+
+    if backend == "nvmf_multiconnection":
+        check_call("sed -i '/\[Nvme/,$d' " + filename, shell=True)
+        output = check_output("lspci -nnn", shell=True)
+        bus_numbers = re.findall(
+            "([0-9][0-9]:[0-9][0-9].[0-9]) Non-Volatile memory controller", output)
+        nvme_ctrl_num = len(bus_numbers)
+        all_luns = int(nvme_ctrl_num)
+        filedesc = open(filename, 'a')
+        filedesc.write("\n[Gpt]\n")
+        filedesc.write("\nDisable Yes\n")
+        filedesc.write("\n[Nvme] \n")
+        for i, value in enumerate(bus_numbers):
+            filedesc.write(
+                '\n  TransportId "trtype:PCIe traddr:0000:{}" Nvme{} \n'.format(value, i))
+        filedesc.write("\n  NvmeRetryCount {} \n".format(all_luns))
+        filedesc.write("\n  ResetControllerOnTimeout Yes \n")
+        filedesc.write("\n  NvmeTimeoutValue 30 \n")
+        filedesc.write("\n  AdminPollRate 100000 \n")
+        filedesc.write("\n[Split] \n")
+        filedesc.write("  Split Nvme0n1 22 1 \n")
+        filedesc.write("  Split Nvme1n1 22 1 \n")
+        filedesc.write("  Split Nvme2n1 22 1 \n")
+        filedesc.write("  Split Nvme3n1 22 1 \n")
+        filedesc.write("  Split Nvme4n1 22 1 \n")
+        filedesc.write("  Split Nvme5n1 18 1 \n")
+        idx = 0
+        target_id = 1
+        all_nodes = 22
+        for i in range(all_luns):
+            node = 0
+            for i in range(all_nodes):
+                filedesc.write("\n[Subsystem" + str(target_id) + "]\n")
+                filedesc.write("  NQN nqn.2016-06.io.spdk:cnode" + str(target_id) + "\n")
+                filedesc.write("  Core 0\n")
+                filedesc.write("  Listen RDMA 192.168.3.11:4420\n")
+                filedesc.write("  SN SPDK" + str(target_id) + "\n")
+                filedesc.write("  Namespace Nvme" + str(idx) +
+                               "n1p" + str(node) + "\n")
+                node = node + 1
+                target_id = target_id + 1
+            idx = idx + 1
+        filedesc.close()
+        check_call("sed -i '/\[Subsystem129/,$d' " + filename, shell=True)
 
 if __name__ == "__main__":
     if (len(sys.argv) < 4):

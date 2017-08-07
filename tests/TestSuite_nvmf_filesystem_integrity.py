@@ -45,7 +45,7 @@ class TestFileSystemIntegrity_nvmf(TestFileSystemIntegrity, TestCase):
         Run at the start of each test suite.
         fio Prerequisites
         """
-        self.backend = 'nvme_direct'
+        self.backend = 'nvmf_nvme'
         super(
             TestFileSystemIntegrity_nvmf,
             self).set_up_all(
